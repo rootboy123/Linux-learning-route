@@ -1,1 +1,513 @@
+# 第二章
+
+# Linux用户管理
+## 2.1Linux用户以及其用户组
+* Linux是一个多用户分时系统，想要使用系统资
+源，就必须在系统中有合法的账号，每个账号都有
+一个唯一的用户名，同时必须设置密码。在系统中
+使用用户的概念，一方面可以方便识别不同的用
+户，另一方面也可以为用户设置合理的文件权限，
+为每个用户的数据提供安全保障。另外，为了更灵
+活地管理用户和控制文件权限，Linux还采用了用
+户组的概念，这为系统管理提供了极大的便利。
+
+## 2.1.1 UID以及GID
+* 事实上，Linux系统采用一个32位的整数记
+录和区分不同的用户，这意味着系统可以记录多达
+40亿个不同的用户。这个用来区分不同用户的数字
+被称为User ID，简称UID。系统会自动记录“用户
+名”和UID的对应关系。Linux系统中的用户分为3
+类，即普通用户、根用户、系统用户。
+> 通常普
+通用户的UID大于500
+> 根用户也就是root用户，它的ID是0，也被称为
+超级用户，root账户拥有对系统的完全控制权：可
+以修改、删除任何文件，运行任何命令。所以root
+用户也是系统里面最具危险性的用户，root用户甚
+至可以在系统正常运行时删除所有文件系统
+> 统用户是指系统运行时必须有的用户，但并
+不是指真实的使用者。比如在RedHat或CentOS下运
+行网站服务时，需要使用系统用户apache来运行
+httpd进程，而运行MySQL数据库服务时，需要使
+用系统用户mysql来运行mysqld进程
+-------------------
+```
+[root@localhost ~]# ps aux
+USER PID %CPU %MEM VSZ RSS TTY STAT START TIME COMMAN
+root 1 0.0 0.0 2072 632 ? Ss Oct18 0:00 init [
+......(
+略去内容)......
+apache 7930 0.0 0.1 9944 2064 ? S 21:23 0:
+```
+--------------------
+* 在Linux下也是一样的道理。既
+然是这样，如何查看自己的UID和GID呢？
+> 要确认自己的UID，可以使用以下id命令<br>要确认自己所属的用户组，可以使用以下groups
+
+* 如果要查询当前在线用户，可在用户登录以
+后，使用命令who看到目前登录在系统中的所有用
+户。下面的例子说明当前有3个登录，其中用户root
+分别从tty1、pts/0登录到系统，而用户john从pts/1登
+录。
+-------------------
+```
+[root@localhost ~]# who
+root tty1 2012-10-22 00:13
+root pts/0 2012-10-22 21:20 (192.168.179.1)
+john pts/1 2012-10-22 22:35 (192.168.179.1)
+```
+---------------------
+
+# 2.1.2 /etc/passwd和/etc/shadow
+* 在登录Linux时必须要输入用户
+名和密码。而系统用来记录用户名、密码最重要的
+两个文件就是/etc/passwd和/etc/shadow。以下
+是/etc/passwd中的几行内容：
+------------------------
+```
+[root@localhost ~]# cat /etc/passwd
+root:x:0:0:root:/root:/bin/bash
+bin:x:1:1:bin:/bin:/sbin/nologin
+daemon:x:2:2:daemon:/sbin:/sbin/nologin
+adm:x:3:4:adm:/var/adm:/sbin/nologin
+lp:x:4:7:lp:/var/spool/lpd:/sbin/nologin
+```
+-------------------------
+
+* 目前Linux的做法是，将密码相关的信息保存
+到/etc/shadow中，而且默认只有root用户才有读的
+权限，其他人完全没有读取这个文件的可能。这种
+密码保存方式被称为“影子密码”。看一
+下/etc/shadow中的第一行内容：
+---------------------
+```
+[root@localhost ~]# cat /etc/shadow
+root:$1$JjIvgikC$YjiVyo3wVahvrwr0IETTV/:15620:0:99999:7:::
+......
+（略去内容）......
+```
+----------------------
+
+# 2.2 Linux账号管理
+* 从账号类型来说，Linux用户按照使用方式分
+为三种：一是根用户，二是系统用户，三是普通用
+户
+
+## 2.2.1 新增和删除用户
+1. 新增用户  _useradd_<br>
+useradd命令用于添加新的用户。其使用方式很
+简单，通常情况下可直接在该命令后跟上新增的用
+户名。比如，需要新建一个叫john的用户，直接输
+入命令useradd john即可。但是对于系统来说，完成
+这个命令需要在后台执行很多对用户来说毫无感知
+的行为:<br>
+
+* 首先，系统需要将用户信息记录在/etc/passwd
+中，一般会在/etc/passwd和/etc/shadow末尾追加一
+条记录，同时会分配给该用户一个UID。<br>
+接着，要为该用户自动创建家目录。家目录以
+创建的用户名为目录名，创建的路径在/home目录
+中。比如，在上述案例中，创建的目录将
+是/home/john。<br>
+然后，复制/etc/skel下所有的文件
+至/home/john。说明一下，如果你使用ls-l/etc/skel命
+令查看，可以发现这个目录下“什么都没有”，但事
+实上，该目录下面有很多隐藏文件，使用命令ls-
+la/etc/skel就可以看到其中还是有好几个文件的
+
+* 在使用useradd添加用户时，系统会给该用户自
+动分配一个UID，但是也可以通过使用-u参数实现
+指定UID，当然，必须要指定的UID不与其他用户
+冲突才可以。下面的例子就创建了一个UID为555的
+账号：
+```
+[root@localhost skel]# useradd -u 555 user1
+```
+使用-g参数可以做到这
+点。下面就是创建用户user2时，指定了该用户所属
+的Group是user1。
+```
+[root@localhost skel]# useradd -g user1 user2
+```
+还可以使用-d参数指定该用户的家目录，而不是
+使用系统默认创建的家目录。像下面这样就可以指
+定/home/mydir3作为user3用户的家目录：
+```
+[root@localhost skel]# useradd -d /home/mydir3 user3
+```
+
+
+2.修改密码：_passwd_
+
+* 创建用户后，该用户实际上还没有登录系统的
+权限，因为在不设置密码的情况下，在/etc/shadow
+中该用户记录中以冒号分隔的第二列将显示为两个
+感叹号“！！”这说明不允许该用户登录系统。因
+此，需要同时设置用户的密码才行，设置命令是
+passwd后接用户名，如下所示：passwd + 用户名
+--------------------
+```
+[root@localhost skel]# passwd john
+Changing password for user john.
+New UNIX password:
+Retype new UNIX password:
+passwd: all authentication tokens updated successfully
+```
+--------------------
+
+* 普通用户也可以使用passwd来修改自己的密
+码，但是需要提供当前用户的密码才可以，并且密
+码不能太过简单，因为系统会拒绝普通用户设置过
+于简单的密码。命令如下所示：
+-------------------
+```
+[john@localhost ~]$ passwd
+Changing password for user john.
+Changing password for john
+(current) UNIX password:
+New UNIX password:
+Retype new UNIX password:
+passwd: all authentication tokens updated successfully.
+```
+--------------------
+
+3. 修改用户 _usermod_
+
+* 有时候可能会由于某些具体的场景，而需要对
+已存在的用户进行修改，这时候就需要使用
+usermod命令了。比如说，下面创建了一个用户并
+设置了密码：
+```
+[root@localhost ~]# useradd alice
+[root@localhost ~]# passwd alice
+Changing password for user alice.
+New UNIX password:
+Retype new UNIX password:
+passwd: all authentication tokens updated successfully.
+```
+现在看一下用户alice在/etc/passwd中的记录：
+```
+[root@localhost ~]# cat /etc/passwd | grep alice
+alice:x:503:503::/home/alice:/bin/bash
+```
+冒号隔开的第五列是用户alice的家目录，如果
+希望修改家目录为/home/alice_new，可使用以下命
+令对alice的家目录做修改：
+```
+[root@localhost ~]# usermod -d /home/alice_new -m alice
+```
+其中，-m参数的作用是，如果指定用户的家目
+录存在，就自动创建新目录/home/alice_new，并使
+用该目录作为alice的新家目录。如果没有这个参
+数，系统会报一个错误：
+usermod:user/home/alice_new does not exist。
+* 也许会因为某些原因，账号alice现在还不适合
+使用（如发现账号异常），需要暂时将这个账号冻
+结起来，这时，可以使用-L参数实现此目的。在操
+作之前先看一下/etc/shadow中关于alice的内容，然
+后再进行冻结操作，最后再看一下/etc/shadow，看
+看有什么不同
+```
+[root@localhost ~]# cat /etc/shadow | grep alice
+alice:$1$Doi70VUY$Gmjq6HijgNLsm7xnys4Lw/:15642:0:99999:7:::
+[root@localhost ~]# usermod -L alice
+[root@localhost ~]# cat /etc/shadow | grep alice
+alice:!$1$Doi70VUY$Gmjq6HijgNLsm7xnys4Lw/:15642:0:99999:7:::
+```
+在冒号隔开的第二列，也就
+是密码处多了一个感叹号，这表示该账号已被冻
+结。使用-U参数可以解锁，而且可以看到密码又恢
+复如从前了。
+```
+[root@localhost ~]# usermod -U alice
+[root@localhost ~]# cat /etc/shadow | grep alice
+alice:$1$Doi70VUY$Gmjq6HijgNLsm7xnys4Lw/:15642:0:99999:7:::
+```
+4. 删除用户 _userdel_
+
+* 用户管理除了创建、修改用户之外，有时候也
+需要删除用户。对应的命令是userdel。例如现在需
+要删除alice用户：
+```
+[root@localhost ~]# userdel alice
+```
+
+## 2.2.2 增加用户组和删除用户组
+* 增加用户组 _groupadd_ + groupname
+* 删除用户组 _groupdel_ + groupname
+
+
+## 2.2.3检查用户信息
+
+1. 查看用户： _user_ ,_who_,_w_
+
+* 使用命令users可以查看当前系统有哪些用户。
+比如，在当前的系统中运行users命令，就会发现有
+两个root在当前机器上登录。实际上，Linux会把所
+有来自不同终端的活动定义为一个会话，从who命
+令的输出，可以看出root用户是通过不同的终端登
+录到系统中的。users命令相对比较简单，所以列出
+的信息也比较少，可以使用命令who来看到更多信
+息，如下所示：
+```
+[root@localhost ~]# users
+root root
+[root@localhost ~]# who
+root tty1 2012-11-01 23:00
+root pts/0 2012-11-01 22:56 (192.168.179.1)
+```
+命令显示的结果有3列，第一列是登录用户的用
+户名，第二列是用户登录的终端，第三列是用户登
+录的时间。如果是通过远程网络登录，则同时会显
+示远程主机的主机名或IP地址。还可以使用命令w
+看到更详细的信息，如下所示：
+```
+[root@localhost ~]# w
+23:21:30 up 27 min, 2 users, load average: 0.00, 0.00, 0.00
+USER TTY FROM LOGIN@ IDLE JCPU PCPU WHAT
+root tty1 - 23:00 7.00s 0.02s 0.02s -
+bash
+root pts/0 192.168.179.1 22:56 0.00s 0.03s 0.00
+```
+
+2. 调查用户：_finger_
+
+* finger命令在不加任何参数的情况下，同样会显
+示系统的登录用户，如下所示：
+```
+[root@localhost ~]# finger
+Login Name Tty Idle Login Time Office Office Phone
+root root tty1 22 Nov 1 23:00
+root root pts/0 Nov 1 22:56 (192.168.179
+```
+如果在finger后跟上某个用户名，则显示该用户
+更详细的信息，如下所示：
+```
+[root@localhost ~]# finger user1
+Login: user1 Name: (null)
+Directory: /home/user1 Shell: /bin/bash
+Never logged in. #
+显示用户最近一次登录到系统中的时间
+No mail. #
+显示邮件信息
+No Plan. #
+显示计划信息
+```
+
+## 2.3.1 切换成其他用户号
+
+* 使用su命令，su是切换用户的意
+思。在不加参数的情况下，su命令默认表示切换到
+root用户，之后只要输入root密码就可以切换身份为
+root了，完成操作后，使用exit命令可以退出root切
+换到原先的用户。如下所示：
+```
+[john@localhost ~]$ su
+Password: #
+输入root
+用户的密码
+[root@localhost john]# pwd
+/home/john
+[root@localhost john]# exit
+exit
+[john@localhost ~]$
+```
+su命令后面还可以加上一个“-”参数，就是键盘
+上的中横线。加上这个参数后，切换成root用户
+时，不但身份变成了root，而且还能应用root的用户
+
+## 2.3.2 用其他用户的身份执行命令： _sudo_
+
+*  在演示sudo命令之前，首先需要设置/etc/sudoers
+这个配置文件。当然，可以使用一些常见的编辑器
+来编辑这个文件，比如vi或者vim编辑器等（常见
+编辑器的使用方法将在第9章中讲解），但是考虑
+到这个配置文件的重要性，Linux提供了专门编辑
+这个文件的方式，就是使用命令visudo来编辑这个
+文件，它的好处是可以在编辑后保存退出时自动检
+查语法设置，以防止不小心配置错误而造成无法使
+用sudo命令。该命令如下所示：
+```
+[root@localhost ~]# visudo
+## Sudoers allows particular users to run various commands as
+## the root user, without needing the root password.
+##
+## Examples are provided at the bottom of the file for collections
+## of related commands, which can then be delegated out to particular
+## users or groups.
+##
+## This file must be edited with the 'visudo' command.
+......(
+略去内容)......
+## Allow root to run any commands anywhere
+root ALL=(ALL) ALL
+john ALL=(ALL) ALL #
+复制上一行的内容，并修改用户名为john
+## Allows members of the 'sys' group to run networking, software,
+## service management apps and more.
+# %sys ALL = NETWORKING, SOFTWARE, SERVICES, STORAGE, DELEGATING, PROCE
+## Allows people in group wheel to run all commands
+# %wheel ALL=(ALL) ALL
+## Same thing without a password
+# %wheel ALL=(ALL) NOPASSWD: ALL
+## Allows members of the users group to mount and unmount the
+## cdrom as root
+# %users ALL=/sbin/mount /mnt/cdrom, /sbin/umount /mnt/cdrom
+## Allows members of the users group to shutdown this system
+# %users localhost=/sbin/shutdown -h now
+```
+修改完成后，使用用户john登录，然后再尝试使
+用sudo给别的用户修改密码，系统首先要求输入用
+户john的密码，验证通过后，就可以设置其他用户
+的密码了，如下所示
+```
+[john@localhost ~]$ sudo passwd user1
+[sudo] password for john: #
+这里输入用户john
+的密码
+Changing password for user user1.
+New UNIX password: #
+输入user1
+的新密码
+Retype new UNIX password: #
+再次输入user1
+的新密码
+passwd: all authentication tokens updated successfully.
+```
+
+## 2.4 例行任务管理
+* 在Linux中也有处理这两种任务的方
+法。如果任务是周期性执行的，其命令为cron；如
+果只是在某一个特定的时间执行一次，其命令为
+at。
+
+## 2.4.1 单一时刻执行一次任务：_at_
+
+* 比如从现在开始，设置30分钟后自动关
+机，这时就可以使用at命令。
+```
+[root@localhost ~]# at now + 30 minutes
+at> /sbin/shutdown -h now
+at> <EOT>
+job 1 at 2012-11-06 23:39
+```
+其中，第一行是定义从现在开始算，30分钟后
+安排一个任务；第二行是到了时间后执行关机操
+作；第三行是个<EOT>，这不是使用键盘输入的，
+而是使用了组合键Ctrl+D，表示输入结束；第四行
+是系统提示有一个任务将在23:39被执行。可以使用
+atq命令查看当前使用at命令调度的任务列表，第一
+列是任务编号；也可以使用atrm删除已经进入任务
+队列的任务，再使用atq查询时，发现已经没有任务
+列表了，如下所示：
+```
+[root@localhost ~]# atq
+1 2012-11-06 23:39 a root #
+查询at
+的任务队列，第一个数字代表该任务的标号
+[root@localhost ~]# atrm 1 #
+删除标号为1
+的任务
+```
+
+## 2.4.2 周期性执行任务：_cron_
+* 在Linux
+中，可以利用cron工具做这种设置。首先需要确定
+crond进程在运行，如果没有运行，需要先启动该进
+程。
+```
+[root@localhost ~]# service crond start
+Starting crond: [ OK ]
+[root@localhost ~]# service crond status
+crond (pid 3257) is running...
+```
+用户可通过crontab来设置自己的计划任务，并
+使用-e参数来编辑任务。在这之前需要先了解一下
+设置的“语法”，当使用crontab-e进入编辑模式时，
+需要编辑执行的时间和执行的命令。在下面的示例
+中，前面5个*可以用来定义时间，第一个*表示分
+钟，可以使用的值是1~59，每分钟可以使用*和*/1
+表示；第二个*表示小时，可以使用的值是0~23；
+第三个*表示日期，可以使用的值是1~31；第四个*
+表示月份，可以使用的值是1~12；第五个*表示星
+期几，可以使用的值是0~6，0代表星期日；最后是
+执行的命令。当到了设定的时间时，系统就会自动
+执行定义好的命令，设置crontab的基本格式如下所
+示
+
+```
+* * * * * service httpd restart
+*/1 * * * * service httpd restart
+#
+这两种写法其实是一致的，都是每分钟重启httpd
+进程。请注意，这只是一个例子，
+除非你有确定的目的，否则不要在实际生产环境中这么设置
+* */1 * * * service httpd restart
+#
+每小时重启httpd
+进程
+* 23-3/1 * * * service httpd restart
+#
+从23
+点开始到3
+点，每小时重启httpd
+进程
+30 23 * * * service httpd restart
+#
+每天晚上23
+点30
+分重启httpd
+进程
+30 23 1 * * service httpd restart
+#
+每月的第一天晚上23
+点30
+分重启httpd
+进程
+30 23 1 1 * service httpd restart
+#
+每年1
+月1
+日的晚上23
+点30
+分重启httpd
+进程
+30 23 * * 0 service httpd restar
+
+每周日晚上23
+点30
+分重启httpd
+进程
+```
+
+## 2.4.3 /etc/crontab的管理
+
+* 事实上，系统也有自己
+的例行任务，而其配置文件是/etc/crontab。我们先
+来看一下这个文件的内容：
+```
+[root@localhost ~]# cat /etc/crontab
+SHELL=/bin/bash
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+MAILTO=root
+HOME=/
+# run-parts
+01 * * * * root run-parts /etc/cron.hourly
+02 4 * * * root run-parts /etc/cron.daily
+22 4 * * 0 root run-parts /etc/cron.weekly
+42 4 1 * * root run-parts /etc/cron.monthly
+```
+实际上cron.hourly、
+cron.daily、cron.weekly、cron.monthly都是文件
+夹，文件夹中则定义了具体的任务。
+
+
+
+
+
+
+
+
+
+
 
